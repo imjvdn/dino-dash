@@ -502,71 +502,127 @@ class ObstacleSystem {
     }
 }
 
+// ===== GOD MODE =====
+class GodMode {
+    constructor(player, obstacleSystem) {
+        this.player = player;
+        this.obstacleSystem = obstacleSystem;
+        this.isActive = false;
+        this.decisionInterval = 50; // Check for obstacles every X frames
+        this.frameCounter = 0;
+    }
+
+    toggle() {
+        this.isActive = !this.isActive;
+        return this.isActive;
+    }
+
+    update() {
+        if (!this.isActive) return;
+        
+        this.frameCounter++;
+        if (this.frameCounter >= this.decisionInterval) {
+            this.frameCounter = 0;
+            this.makeDecision();
+        }
+    }
+
+    makeDecision() {
+        // Find the nearest obstacle in front of the player
+        const nearestObstacle = this.obstacleSystem.obstacles
+            .filter(obs => obs.x + obs.width > this.player.x)
+            .sort((a, b) => (a.x - this.player.x) - (b.x - this.player.x))[0];
+
+        if (!nearestObstacle) return;
+
+        const distanceToObstacle = nearestObstacle.x - (this.player.x + this.player.width);
+        const isObstacleClose = distanceToObstacle < 150;
+        const shouldJump = isObstacleClose && !this.player.isJumping;
+        
+        // Jump if obstacle is close and player is on the ground
+        if (shouldJump) {
+            this.player.jump();
+        }
+    }
+}
+
 // ===== INPUT SYSTEM =====
 class InputSystem {
     constructor() {
         this.state = {
             spacePressed: false,
-            upPressed: false
+            upPressed: false,
+            godMode: false
         };
         this.setupEventListeners();
     }
 
     setupEventListeners() {
-        // Keyboard events
+        // Keyboard controls
         document.addEventListener('keydown', (e) => {
-            if (e.code === 'Space' || e.code === 'ArrowUp') {
+            if (e.code === 'KeyG' || (e.ctrlKey && e.key === 'g')) {
+                // Toggle god mode with Ctrl+G or G
+                this.state.godMode = !this.state.godMode;
+                document.getElementById('godModeStatus').textContent = this.state.godMode ? 'ON' : 'OFF';
+                document.getElementById('godModeStatus').className = this.state.godMode ? 'active' : '';
                 e.preventDefault();
-                if (!this.state.spacePressed && !this.state.upPressed) {
-                    game.handleJump();
-                }
-                this.state.spacePressed = e.code === 'Space';
-                this.state.upPressed = e.code === 'ArrowUp';
+            } else if (e.code === 'Space' || e.key === ' ' || e.key === 'Spacebar' || e.keyCode === 32) {
+                this.state.spacePressed = true;
+                e.preventDefault();
+            } else if (e.key === 'ArrowUp' || e.keyCode === 38) {
+                this.state.upPressed = true;
+                e.preventDefault();
             }
         });
 
         document.addEventListener('keyup', (e) => {
-            if (e.code === 'Space') {
+            if (e.code === 'Space' || e.key === ' ' || e.key === 'Spacebar' || e.keyCode === 32) {
                 this.state.spacePressed = false;
-            }
-            if (e.code === 'ArrowUp') {
+            } else if (e.key === 'ArrowUp' || e.keyCode === 38) {
                 this.state.upPressed = false;
             }
         });
 
-        // Mobile touch events
+        // Touch controls
         const jumpButton = document.getElementById('jumpButton');
         if (jumpButton) {
             jumpButton.addEventListener('touchstart', (e) => {
+                this.state.spacePressed = true;
                 e.preventDefault();
-                game.handleJump();
             });
 
-            jumpButton.addEventListener('click', (e) => {
+            jumpButton.addEventListener('touchend', (e) => {
+                this.state.spacePressed = false;
                 e.preventDefault();
-                game.handleJump();
             });
         }
+    }
 
-        // Canvas touch events
+    // Canvas touch events
+    setupCanvasEvents() {
         const canvas = document.getElementById('gameCanvas');
         if (canvas) {
             canvas.addEventListener('touchstart', (e) => {
                 e.preventDefault();
-                game.handleJump();
+                if (this.game && this.game.handleJump) {
+                    this.game.handleJump();
+                }
             });
 
             canvas.addEventListener('click', (e) => {
                 e.preventDefault();
-                game.handleJump();
+                if (this.game && this.game.handleJump) {
+                    this.game.handleJump();
+                }
             });
         }
 
         // Restart game events
         document.addEventListener('keydown', (e) => {
-            if (!game.gameState.isRunning && (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'Enter')) {
+            if (this.game && !this.game.gameState.isRunning && 
+                (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'Enter')) {
                 e.preventDefault();
-                game.restart();
+                this.game.restart();
             }
         });
     }
@@ -590,16 +646,22 @@ class Game {
         this.obstacleSystem = new ObstacleSystem(this.canvas);
         this.inputSystem = new InputSystem();
         
+        // Initialize God Mode
+        this.godMode = new GodMode(this.player, this.obstacleSystem);
+        
+        // Set up canvas events
+        this.inputSystem.setupCanvasEvents();
+        
         // Start game loop
         this.gameLoop();
     }
-
+    
     handleJump() {
         if (this.gameState.isRunning) {
             this.player.jump();
         }
     }
-
+    
     restart() {
         this.gameState.reset();
         this.player = new Player(this.canvas);
@@ -607,26 +669,48 @@ class Game {
         this.backgroundSystem.reset();
         this.obstacleSystem.reset();
         
+        // Reset God Mode
+        this.godMode = new GodMode(this.player, this.obstacleSystem);
+        
         document.getElementById('gameOver').style.display = 'none';
         document.body.classList.remove('night-mode');
     }
 
     update() {
         if (!this.gameState.isRunning) return;
-
+        
+        // Update game state
         this.gameState.update();
+        
+        // Update God Mode if active
+        if (this.inputSystem.state.godMode) {
+            this.godMode.update();
+        }
+        
+        // Update game objects
         this.player.update(this.inputSystem.state, this.particleSystem);
+        this.obstacleSystem.update(this.gameState);
         this.particleSystem.update();
         this.backgroundSystem.update(this.gameState);
-        this.obstacleSystem.update(this.gameState);
-
-        // Check collisions
+        
+        // Check for collisions
         if (this.obstacleSystem.checkCollision(this.player)) {
             this.gameState.gameOver();
         }
-
-        // Update UI
-        this.updateUI();
+    }
+    
+    // Update UI
+    updateUI() {
+        document.getElementById('score').textContent = Math.floor(this.gameState.score);
+        document.getElementById('highScore').textContent = this.gameState.highScore;
+        
+        // Update game over screen
+        const gameOverElement = document.getElementById('gameOver');
+        if (this.gameState.isRunning) {
+            gameOverElement.style.display = 'none';
+        } else if (this.gameState.score > 0) {
+            gameOverElement.style.display = 'block';
+        }
     }
 
     draw() {
@@ -638,6 +722,16 @@ class Game {
         this.player.draw(this.ctx, this.gameState, this.inputSystem.state);
         this.obstacleSystem.draw(this.ctx, this.gameState);
         this.particleSystem.draw(this.ctx, this.gameState);
+        
+        // Draw God Mode indicator
+        if (this.inputSystem.state.godMode) {
+            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            this.ctx.fillRect(10, 10, 120, 30);
+            this.ctx.font = '16px Arial';
+            this.ctx.fillStyle = '#0f0';
+            this.ctx.textAlign = 'left';
+            this.ctx.fillText('GOD MODE: ON', 20, 30);
+        }
     }
 
     updateUI() {
@@ -648,6 +742,7 @@ class Game {
     gameLoop() {
         this.update();
         this.draw();
+        this.updateUI();
         requestAnimationFrame(() => this.gameLoop());
     }
 }

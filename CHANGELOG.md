@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- **God Mode** - New auto-play feature that lets the game play itself (press 'G' to toggle)
+- GitHub Pages deployment configuration for live demo
+- Visual indicator for God Mode status in the game UI
+- Pulsing animation for active God Mode
+- Enhanced UI with better styling and visual feedback
+- Improved mobile controls and touch support
+
+### Changed
+- Updated README.md with live demo link and God Mode instructions
+- Enhanced game UI with better visual hierarchy
+- Improved code organization and documentation
+- Optimized performance for smoother gameplay
+- Fixed various bugs and improved stability
+
+## [1.0.0] - 2025-06-13
+### Added
 - Initial project structure with separate directories for source files
 - Comprehensive documentation in README.md
 - CONTRIBUTING.md with contribution guidelines
@@ -20,17 +36,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Night mode activation at 700 points
 - Double jump and float mechanics
 - High score tracking with localStorage
-
-### Changed
-- Moved legacy index.html to archive/ directory
-- Renamed index-new.html to index.html as main entry point
-- Reorganized file structure for better maintainability
-- Updated file paths in HTML and configuration files
-- Refactored from single HTML file to modular structure
-- Improved code organization and maintainability
-- Updated game architecture to use ES6 classes
-- Enhanced visual feedback for player actions
-- Optimized performance for smoother gameplay
 
 ### Fixed
 - Various bug fixes and performance improvements
