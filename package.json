@@ -1,0 +1,44 @@
+{
+  "name": "dino-dash",
+  "version": "1.0.0",
+  "description": "A professional Chrome Dinosaur Runner clone with enhanced graphics and animations",
+  "main": "index-new.html",
+  "scripts": {
+    "start": "python3 -m http.server 8080",
+    "dev": "python3 -m http.server 8080",
+    "build": "echo 'No build process needed for vanilla JS project'",
+    "test": "echo 'Tests not implemented yet'",
+    "lint": "echo 'Linting not configured yet'",
+    "deploy": "echo 'Deploy script not configured'"
+  },
+  "keywords": [
+    "game",
+    "dinosaur",
+    "runner",
+    "chrome",
+    "dino",
+    "dash",
+    "javascript",
+    "canvas",
+    "html5",
+    "vanilla-js"
+  ],
+  "author": "Dino Dash Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/dino-dash.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-username/dino-dash/issues"
+  },
+  "homepage": "https://github.com/your-username/dino-dash#readme",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead"
+  ]
+}

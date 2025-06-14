@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dino Dash - Chrome Dinosaur Runner Clone</title>
+    <style>
+        /* Reset and base styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: #f7f7f7;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+        }
+
+        /* Game container */
+        #gameContainer {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            background: linear-gradient(to bottom, #f7f7f7 70%, #e0e0e0 70%);
+            transition: background 0.5s ease;
+        }
+
+        /* Night mode styling */
+        .night-mode {
+            background: linear-gradient(to bottom, #2c2c2c 70%, #1a1a1a 70%) !important;
+            color: #f7f7f7;
+        }
+
+        .night-mode .ground {
+            background: #1a1a1a !important;
+        }
+
+        .night-mode .cloud {
+            background: #555 !important;
+        }
+
+        /* Game canvas */
+        #gameCanvas {
+            display: block;
+            margin: 0 auto;
+            background: transparent;
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+        }
+
+        /* UI Elements */
+        .ui {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 18px;
+            font-weight: bold;
+            color: #535353;
+            z-index: 10;
+        }
+
+        .night-mode .ui {
+            color: #f7f7f7;
+        }
+
+        /* Game Over screen */
+        .game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            font-size: 24px;
+            color: #535353;
+            z-index: 20;
+            display: none;
+        }
+
+        .night-mode .game-over {
+            color: #f7f7f7;
+        }
+
+        .game-over h2 {
+            font-size: 32px;
+            margin-bottom: 10px;
+            animation: blink 1s infinite;
+        }
+
+        .game-over p {
+            font-size: 16px;
+            margin: 5px 0;
+        }
+
+        /* Blinking animation */
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+
+        /* Instructions */
+        .instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            font-size: 14px;
+            color: #888;
+            z-index: 10;
+        }
+
+        .night-mode .instructions {
+            color: #ccc;
+        }
+
+        /* Mobile controls */
+        .mobile-controls {
+            position: absolute;
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: none;
+            z-index: 15;
+        }
+
+        .jump-button {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: rgba(83, 83, 83, 0.3);
+            border: 3px solid #535353;
+            font-size: 16px;
+            color: #535353;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        .night-mode .jump-button {
+            background: rgba(247, 247, 247, 0.3);
+            border-color: #f7f7f7;
+            color: #f7f7f7;
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .mobile-controls {
+                display: block;
+            }
+            
+            .instructions {
+                bottom: 140px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <!-- Game UI -->
+        <div class="ui">
+            <div>Score: <span id="score">0</span></div>
+            <div>High Score: <span id="highScore">0</span></div>
+        </div>
+
+        <!-- Game Canvas -->
+        <canvas id="gameCanvas"></canvas>
+
+        <!-- Game Over Screen -->
+        <div class="game-over" id="gameOver">
+            <h2>GAME OVER</h2>
+            <p>Score: <span id="finalScore">0</span></p>
+            <p>Press SPACE or TAP to restart</p>
+        </div>
+
+        <!-- Instructions -->
+        <div class="instructions">
+            <p>Press SPACE or ↑ to jump (double jump available!) • Hold SPACE or ↑ to float during descent • Avoid the cacti!</p>
+        </div>
+
+        <!-- Mobile Controls -->
+        <div class="mobile-controls">
+            <button class="jump-button" id="jumpButton">JUMP</button>
+        </div>
+    </div>
+
+    <script>
+        // Game variables and constants
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const gameContainer = document.getElementById('gameContainer');
+        
+        // Set canvas size
+        canvas.width = Math.min(window.innerWidth, 800);
+        canvas.height = Math.min(window.innerHeight, 400);
+        
+        // Game constants
+        const GRAVITY = 0.6;
+        const JUMP_FORCE = -15;
+        const GROUND_HEIGHT = 50;
+        const INITIAL_SPEED = 3;
+        const SPEED_INCREMENT = 0.005;
+        const OBSTACLE_SPAWN_RATE = 0.007;
+        const NIGHT_MODE_THRESHOLD = 700;
+        
+        // Game state
+        let gameState = {
+            isRunning: false,
+            isGameOver: false,
+            score: 0,
+            speed: INITIAL_SPEED,
+            nightMode: false,
+            frameCount: 0
+        };
+        
+        // Player (T-Rex) object
+        const player = {
+            x: 50,
+            y: canvas.height - GROUND_HEIGHT - 40,
+            width: 40,
+            height: 40,
+            velocityY: 0,
+            isJumping: false,
+            groundY: canvas.height - GROUND_HEIGHT - 40,
+            jumpCount: 0,
+            maxJumps: 2, // Allow double jump
+            animationFrame: 0,
+            animationSpeed: 8,
+            state: 'running' // running, jumping, ducking
+        };
+        
+        // Particle system
+        let particles = [];
+        
+        // Background layers for parallax
+        let backgroundLayers = {
+            mountains: [],
+            hills: [],
+            bushes: []
+        };
+        
+        // Obstacles array
+        let obstacles = [];
+        
+        // Clouds array for background
+        let clouds = [];
+        
+        // Ground segments for scrolling effect
+        let groundSegments = [];
+        
+        // Input state for floating mechanic
+        let inputState = {
+            spacePressed: false,
+            upPressed: false
+        };
+        
+        // Initialize game elements
+        function initGame() {
+            // Reset game state
+            gameState.isRunning = true;
+            gameState.isGameOver = false;
+            gameState.score = 0;
+            gameState.speed = INITIAL_SPEED;
+            gameState.nightMode = false;
+            gameState.frameCount = 0;
+            
+            // Reset player
+            player.y = player.groundY;
+            player.velocityY = 0;
+            player.isJumping = false;
+            player.jumpCount = 0;
+            
+            // Clear arrays
+            obstacles = [];
+            clouds = [];
+            groundSegments = [];
+            particles = [];
+            
+            // Initialize clouds
+            for (let i = 0; i < 5; i++) {
+                clouds.push({
+                    x: Math.random() * canvas.width * 2,
+                    y: Math.random() * (canvas.height * 0.3),
+                    width: 40 + Math.random() * 20,
+                    height: 20 + Math.random() * 10,
+                    speed: 0.5 + Math.random() * 0.5
+                });
+            }
+            
+            // Initialize ground segments
+            for (let i = 0; i < Math.ceil(canvas.width / 20) + 1; i++) {
+                groundSegments.push({
+                    x: i * 20,
+                    width: 20,
+                    height: 2
+                });
+            }
+            
+            // Initialize background layers for parallax
+            // Mountains (slowest layer)
+            for (let i = 0; i < 3; i++) {
+                backgroundLayers.mountains.push({
+                    x: i * 300,
+                    y: canvas.height * 0.2,
+                    width: 300,
+                    height: 80,
+                    speed: 0.2
+                });
+            }
+            
+            // Hills (medium layer)
+            for (let i = 0; i < 4; i++) {
+                backgroundLayers.hills.push({
+                    x: i * 250,
+                    y: canvas.height * 0.4,
+                    width: 250,
+                    height: 60,
+                    speed: 0.5
+                });
+            }
+            
+            // Bushes (fastest background layer)
+            for (let i = 0; i < 6; i++) {
+                backgroundLayers.bushes.push({
+                    x: i * 150 + Math.random() * 50,
+                    y: canvas.height - GROUND_HEIGHT - 15,
+                    width: 20 + Math.random() * 10,
+                    height: 15,
+                    speed: 1.5
+                });
+            }
+            
+            // Hide game over screen
+            document.getElementById('gameOver').style.display = 'none';
+            
+            // Update UI
+            updateUI();
+        }
+        
+        // Handle player jump
+        function jump() {
+            if (!player.isJumping && gameState.isRunning) {
+                player.velocityY = JUMP_FORCE;
+                player.isJumping = true;
+                player.jumpCount++;
+            } else if (player.jumpCount < player.maxJumps && gameState.isRunning) {
+                player.velocityY = JUMP_FORCE;
+                player.jumpCount++;
+            }
+        }
+        
+        // Update player physics
+        function updatePlayer() {
+            // Apply gravity (reduced if floating during descent)
+            const isFloating = (inputState.spacePressed || inputState.upPressed) && 
+                              player.isJumping && player.velocityY > 0;
+            const currentGravity = isFloating ? GRAVITY * 0.25 : GRAVITY;
+            
+            player.velocityY += currentGravity;
+            player.y += player.velocityY;
+            
+            // Ground collision
+            if (player.y >= player.groundY) {
+                // Create landing particles
+                if (player.isJumping) {
+                    createLandingParticles();
+                }
+                
+                player.y = player.groundY;
+                player.velocityY = 0;
+                player.isJumping = false;
+                player.jumpCount = 0;
+            }
+        }
+        
+        // Create particle effects
+        function createLandingParticles() {
+            for (let i = 0; i < 8; i++) {
+                particles.push({
+                    x: player.x + player.width / 2 + (Math.random() - 0.5) * 20,
+                    y: player.y + player.height,
+                    velocityX: (Math.random() - 0.5) * 4,
+                    velocityY: -Math.random() * 3 - 1,
+                    life: 30,
+                    maxLife: 30,
+                    size: Math.random() * 3 + 1,
+                    type: 'dust'
+                });
+            }
+        }
+        
+        function createJumpTrail() {
+            if (player.isJumping && Math.random() < 0.3) {
+                particles.push({
+                    x: player.x + player.width / 2,
+                    y: player.y + player.height / 2,
+                    velocityX: -gameState.speed * 0.5,
+                    velocityY: Math.random() * 2 - 1,
+                    life: 20,
+                    maxLife: 20,
+                    size: Math.random() * 2 + 1,
+                    type: 'trail'
+                });
+            }
+        }
+        
+        // Update particles
+        function updateParticles() {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const particle = particles[i];
+                
+                particle.x += particle.velocityX;
+                particle.y += particle.velocityY;
+                particle.velocityY += 0.1; // Gravity on particles
+                particle.life--;
+                
+                if (particle.life <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+        }
+        
+        // Update background layers for parallax effect
+        function updateBackgroundLayers() {
+            // Update mountains
+            for (let mountain of backgroundLayers.mountains) {
+                mountain.x -= mountain.speed;
+                if (mountain.x + mountain.width < 0) {
+                    mountain.x = canvas.width;
+                }
+            }
+            
+            // Update hills
+            for (let hill of backgroundLayers.hills) {
+                hill.x -= hill.speed;
+                if (hill.x + hill.width < 0) {
+                    hill.x = canvas.width;
+                }
+            }
+            
+            // Update bushes
+            for (let bush of backgroundLayers.bushes) {
+                bush.x -= bush.speed;
+                if (bush.x + bush.width < 0) {
+                    bush.x = canvas.width + Math.random() * 100;
+                    bush.y = canvas.height - GROUND_HEIGHT - 15;
+                    bush.width = 20 + Math.random() * 10;
+                }
+            }
+        }
+        
+        // Generate obstacles
+        function generateObstacles() {
+            if (Math.random() < OBSTACLE_SPAWN_RATE * gameState.speed) {
+                // Ensure minimum distance between obstacles
+                const lastObstacle = obstacles[obstacles.length - 1];
+                if (!lastObstacle || lastObstacle.x < canvas.width - 200) {
+                    obstacles.push({
+                        x: canvas.width,
+                        y: canvas.height - GROUND_HEIGHT - 30,
+                        width: 20,
+                        height: 30,
+                        type: 'cactus'
+                    });
+                }
+            }
+        }
+        
+        // Update obstacles
+        function updateObstacles() {
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                obstacles[i].x -= gameState.speed;
+                
+                // Remove obstacles that are off-screen
+                if (obstacles[i].x + obstacles[i].width < 0) {
+                    obstacles.splice(i, 1);
+                }
+            }
+        }
+        
+        // Update clouds
+        function updateClouds() {
+            for (let cloud of clouds) {
+                cloud.x -= cloud.speed;
+                
+                // Reset cloud position when it goes off-screen
+                if (cloud.x + cloud.width < 0) {
+                    cloud.x = canvas.width + Math.random() * 200;
+                    cloud.y = Math.random() * (canvas.height * 0.3);
+                }
+            }
+        }
+        
+        // Update ground segments
+        function updateGround() {
+            for (let segment of groundSegments) {
+                segment.x -= gameState.speed;
+                
+                // Reset segment position when it goes off-screen
+                if (segment.x + segment.width < 0) {
+                    segment.x = canvas.width;
+                }
+            }
+        }
+        
+        // Collision detection
+        function checkCollisions() {
+            for (let obstacle of obstacles) {
+                if (player.x < obstacle.x + obstacle.width &&
+                    player.x + player.width > obstacle.x &&
+                    player.y < obstacle.y + obstacle.height &&
+                    player.y + player.height > obstacle.y) {
+                    gameOver();
+                    return;
+                }
+            }
+        }
+        
+        // Update game score and difficulty
+        function updateScore() {
+            gameState.score += 0.1;
+            gameState.speed += SPEED_INCREMENT;
+            
+            // Check for night mode
+            if (gameState.score > NIGHT_MODE_THRESHOLD && !gameState.nightMode) {
+                gameState.nightMode = true;
+                gameContainer.classList.add('night-mode');
+            }
+        }
+        
+        // Draw player (T-Rex)
+        function drawPlayer() {
+            // Update animation frame
+            player.animationFrame += 1;
+            
+            // Check if floating for visual feedback
+            const isFloating = (inputState.spacePressed || inputState.upPressed) && 
+                              player.isJumping && player.velocityY > 0;
+            
+            // Determine player state
+            if (player.isJumping) {
+                player.state = 'jumping';
+            } else {
+                player.state = 'running';
+            }
+            
+            // Set color based on state and floating
+            if (isFloating) {
+                ctx.fillStyle = gameState.nightMode ? '#ccc' : '#777'; // Lighter when floating
+            } else {
+                ctx.fillStyle = gameState.nightMode ? '#f7f7f7' : '#535353';
+            }
+            
+            // Enhanced T-Rex sprite with better proportions
+            const px = player.x;
+            const py = player.y;
+            
+            if (player.state === 'running') {
+                // Running animation - better proportioned T-Rex
+                // Main body (larger, more realistic)
+                ctx.fillRect(px + 8, py + 12, 20, 16);
+                
+                // Head (better proportioned)
+                ctx.fillRect(px + 22, py + 2, 16, 14);
+                
+                // Snout
+                ctx.fillRect(px + 38, py + 8, 6, 4);
+                
+                // Eye
+                ctx.fillStyle = gameState.nightMode ? '#2c2c2c' : '#f7f7f7';
+                ctx.fillRect(px + 30, py + 5, 3, 3);
+                
+                // Reset color for body parts
+                ctx.fillStyle = isFloating ? (gameState.nightMode ? '#ccc' : '#777') : (gameState.nightMode ? '#f7f7f7' : '#535353');
+                
+                // Animated legs (more realistic running motion)
+                const legCycle = Math.floor(player.animationFrame / player.animationSpeed) % 4;
+                if (legCycle === 0 || legCycle === 2) {
+                    // Left leg forward, right leg back
+                    ctx.fillRect(px + 10, py + 28, 4, 8);
+                    ctx.fillRect(px + 18, py + 30, 4, 6);
+                } else {
+                    // Right leg forward, left leg back
+                    ctx.fillRect(px + 10, py + 30, 4, 6);
+                    ctx.fillRect(px + 18, py + 28, 4, 8);
+                }
+                
+                // Arms (small T-Rex arms)
+                ctx.fillRect(px + 12, py + 16, 3, 6);
+                ctx.fillRect(px + 20, py + 16, 3, 6);
+                
+                // Tail (curved, more detailed)
+                ctx.fillRect(px, py + 18, 8, 4);
+                ctx.fillRect(px - 4, py + 20, 6, 3);
+                
+                // Back spikes for detail
+                ctx.fillRect(px + 15, py + 10, 2, 3);
+                ctx.fillRect(px + 20, py + 8, 2, 4);
+                
+            } else if (player.state === 'jumping') {
+                // Jumping pose - legs tucked up
+                // Main body
+                ctx.fillRect(px + 8, py + 12, 20, 16);
+                
+                // Head
+                ctx.fillRect(px + 22, py + 2, 16, 14);
+                
+                // Snout
+                ctx.fillRect(px + 38, py + 8, 6, 4);
+                
+                // Eye
+                ctx.fillStyle = gameState.nightMode ? '#2c2c2c' : '#f7f7f7';
+                ctx.fillRect(px + 30, py + 5, 3, 3);
+                
+                // Reset color
+                ctx.fillStyle = isFloating ? (gameState.nightMode ? '#ccc' : '#777') : (gameState.nightMode ? '#f7f7f7' : '#535353');
+                
+                // Tucked legs (jumping pose)
+                ctx.fillRect(px + 12, py + 26, 4, 6);
+                ctx.fillRect(px + 18, py + 26, 4, 6);
+                
+                // Arms extended slightly
+                ctx.fillRect(px + 10, py + 16, 4, 6);
+                ctx.fillRect(px + 22, py + 16, 4, 6);
+                
+                // Tail (extended for balance)
+                ctx.fillRect(px - 2, py + 18, 10, 4);
+                ctx.fillRect(px - 6, py + 20, 6, 3);
+                
+                // Back spikes
+                ctx.fillRect(px + 15, py + 10, 2, 3);
+                ctx.fillRect(px + 20, py + 8, 2, 4);
+            }
+        }
+        
+        // Draw obstacles
+        function drawObstacles() {
+            ctx.fillStyle = gameState.nightMode ? '#f7f7f7' : '#535353';
+            
+            for (let obstacle of obstacles) {
+                // Draw cactus
+                ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+                
+                // Add cactus arms
+                ctx.fillRect(obstacle.x - 3, obstacle.y + 8, 6, 3);
+                ctx.fillRect(obstacle.x + obstacle.width - 3, obstacle.y + 12, 6, 3);
+            }
+        }
+        
+        // Draw clouds
+        function drawClouds() {
+            ctx.fillStyle = gameState.nightMode ? '#555' : '#ddd';
+            
+            for (let cloud of clouds) {
+                // Simple cloud shape
+                ctx.fillRect(cloud.x, cloud.y, cloud.width, cloud.height);
+                ctx.fillRect(cloud.x + 10, cloud.y - 5, cloud.width - 20, cloud.height);
+                ctx.fillRect(cloud.x + 5, cloud.y + 5, cloud.width - 10, cloud.height - 10);
+            }
+        }
+        
+        // Draw ground
+        function drawGround() {
+            ctx.fillStyle = gameState.nightMode ? '#1a1a1a' : '#e0e0e0';
+            
+            // Ground base
+            ctx.fillRect(0, canvas.height - GROUND_HEIGHT, canvas.width, GROUND_HEIGHT);
+            
+            // Ground line segments for detail
+            ctx.fillStyle = gameState.nightMode ? '#333' : '#ccc';
+            for (let segment of groundSegments) {
+                ctx.fillRect(segment.x, canvas.height - GROUND_HEIGHT, segment.width, segment.height);
+            }
+        }
+        
+        // Draw particles
+        function drawParticles() {
+            for (let particle of particles) {
+                ctx.fillStyle = gameState.nightMode ? '#ccc' : '#777';
+                ctx.fillRect(particle.x, particle.y, particle.size, particle.size);
+            }
+        }
+        
+        // Draw background layers
+        function drawBackgroundLayers() {
+            // Draw mountains
+            ctx.fillStyle = gameState.nightMode ? '#333' : '#666';
+            for (let mountain of backgroundLayers.mountains) {
+                ctx.fillRect(mountain.x, mountain.y, mountain.width, mountain.height);
+            }
+            
+            // Draw hills
+            ctx.fillStyle = gameState.nightMode ? '#555' : '#888';
+            for (let hill of backgroundLayers.hills) {
+                ctx.fillRect(hill.x, hill.y, hill.width, hill.height);
+            }
+            
+            // Draw bushes
+            ctx.fillStyle = gameState.nightMode ? '#777' : '#aaa';
+            for (let bush of backgroundLayers.bushes) {
+                ctx.fillRect(bush.x, bush.y, bush.width, bush.height);
+            }
+        }
+        
+        // Update UI elements
+        function updateUI() {
+            document.getElementById('score').textContent = Math.floor(gameState.score);
+            
+            // Update high score
+            const currentHighScore = localStorage.getItem('dinoHighScore') || 0;
+            document.getElementById('highScore').textContent = currentHighScore;
+        }
+        
+        // Game over function
+        function gameOver() {
+            gameState.isRunning = false;
+            gameState.isGameOver = true;
+            
+            // Update high score
+            const currentScore = Math.floor(gameState.score);
+            const highScore = localStorage.getItem('dinoHighScore') || 0;
+            
+            if (currentScore > highScore) {
+                localStorage.setItem('dinoHighScore', currentScore);
+                document.getElementById('highScore').textContent = currentScore;
+            }
+            
+            // Show game over screen
+            document.getElementById('finalScore').textContent = currentScore;
+            document.getElementById('gameOver').style.display = 'block';
+        }
+        
+        // Main game loop
+        function gameLoop() {
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            if (gameState.isRunning) {
+                // Update game elements
+                updatePlayer();
+                createJumpTrail();
+                updateParticles();
+                updateBackgroundLayers();
+                generateObstacles();
+                updateObstacles();
+                updateClouds();
+                updateGround();
+                checkCollisions();
+                updateScore();
+                updateUI();
+                
+                gameState.frameCount++;
+            }
+            
+            // Draw everything
+            drawBackgroundLayers();
+            drawClouds();
+            drawGround();
+            drawPlayer();
+            drawObstacles();
+            drawParticles();
+            
+            // Continue game loop
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Event listeners for keyboard controls
+        document.addEventListener('keydown', function(event) {
+            if (event.code === 'Space' || event.code === 'ArrowUp') {
+                event.preventDefault();
+                
+                // Set input state for floating
+                if (event.code === 'Space') {
+                    inputState.spacePressed = true;
+                } else if (event.code === 'ArrowUp') {
+                    inputState.upPressed = true;
+                }
+                
+                if (gameState.isGameOver) {
+                    // Restart game
+                    gameContainer.classList.remove('night-mode');
+                    initGame();
+                } else {
+                    // Jump (only trigger once per keypress)
+                    if (!event.repeat) {
+                        jump();
+                    }
+                }
+            }
+        });
+        
+        document.addEventListener('keyup', function(event) {
+            if (event.code === 'Space') {
+                inputState.spacePressed = false;
+            } else if (event.code === 'ArrowUp') {
+                inputState.upPressed = false;
+            }
+        });
+        
+        // Mobile touch controls
+        document.getElementById('jumpButton').addEventListener('click', function() {
+            if (gameState.isGameOver) {
+                // Restart game
+                gameContainer.classList.remove('night-mode');
+                initGame();
+            } else {
+                // Jump
+                jump();
+            }
+        });
+        
+        // Touch controls for the entire screen on mobile
+        canvas.addEventListener('touchstart', function(event) {
+            event.preventDefault();
+            
+            if (gameState.isGameOver) {
+                // Restart game
+                gameContainer.classList.remove('night-mode');
+                initGame();
+            } else {
+                // Jump
+                jump();
+            }
+        });
+        
+        // Prevent scrolling on mobile
+        document.addEventListener('touchmove', function(event) {
+            event.preventDefault();
+        }, { passive: false });
+        
+        // Handle window resize
+        window.addEventListener('resize', function() {
+            canvas.width = Math.min(window.innerWidth, 800);
+            canvas.height = Math.min(window.innerHeight, 400);
+            
+            // Update player ground position
+            player.groundY = canvas.height - GROUND_HEIGHT - 40;
+            if (!player.isJumping) {
+                player.y = player.groundY;
+            }
+        });
+        
+        // Initialize and start the game
+        initGame();
+        gameLoop();
+    </script>
+</body>
+</html>

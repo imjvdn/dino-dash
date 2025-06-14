@@ -1,0 +1,245 @@
+/* Dino Dash - Professional CSS Styles */
+
+/* Reset and base styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Courier New', monospace;
+    background: linear-gradient(to bottom, #87CEEB 0%, #87CEEB 70%, #DEB887 70%, #DEB887 100%);
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    transition: background 0.5s ease;
+}
+
+/* Night mode styles */
+body.night-mode {
+    background: linear-gradient(to bottom, #1a1a2e 0%, #1a1a2e 70%, #16213e 70%, #16213e 100%);
+}
+
+/* Game container */
+#gameContainer {
+    text-align: center;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Canvas styles */
+#gameCanvas {
+    border: 2px solid #333;
+    border-radius: 5px;
+    background: linear-gradient(to bottom, #87CEEB 0%, #87CEEB 70%, #DEB887 70%, #DEB887 100%);
+    display: block;
+    margin: 0 auto 20px auto;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    transition: background 0.5s ease;
+}
+
+.night-mode #gameCanvas {
+    background: linear-gradient(to bottom, #1a1a2e 0%, #1a1a2e 70%, #16213e 70%, #16213e 100%);
+    border-color: #666;
+}
+
+/* UI Elements */
+#ui {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    color: #333;
+    font-weight: bold;
+    font-size: 18px;
+}
+
+.night-mode #ui {
+    color: #f7f7f7;
+}
+
+#score, #highScore {
+    background: rgba(255, 255, 255, 0.8);
+    padding: 8px 15px;
+    border-radius: 20px;
+    border: 2px solid #333;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.night-mode #score,
+.night-mode #highScore {
+    background: rgba(0, 0, 0, 0.6);
+    color: #f7f7f7;
+    border-color: #666;
+}
+
+/* Game Over Screen */
+#gameOver {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(255, 255, 255, 0.95);
+    padding: 30px;
+    border-radius: 15px;
+    text-align: center;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+    border: 3px solid #333;
+    backdrop-filter: blur(10px);
+}
+
+.night-mode #gameOver {
+    background: rgba(0, 0, 0, 0.9);
+    color: #f7f7f7;
+    border-color: #666;
+}
+
+#gameOver h2 {
+    color: #d32f2f;
+    font-size: 32px;
+    margin-bottom: 15px;
+    animation: blink 1s infinite;
+}
+
+.night-mode #gameOver h2 {
+    color: #ff6b6b;
+}
+
+#gameOver p {
+    font-size: 16px;
+    margin: 10px 0;
+    color: #555;
+}
+
+.night-mode #gameOver p {
+    color: #ccc;
+}
+
+/* Instructions */
+#instructions {
+    margin-top: 15px;
+    color: #666;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.night-mode #instructions {
+    color: #aaa;
+}
+
+/* Mobile Controls */
+#mobileControls {
+    display: none;
+    margin-top: 15px;
+}
+
+#jumpButton {
+    background: linear-gradient(145deg, #4CAF50, #45a049);
+    border: none;
+    color: white;
+    padding: 15px 30px;
+    font-size: 18px;
+    border-radius: 50px;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+    transition: all 0.3s ease;
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+}
+
+#jumpButton:hover {
+    background: linear-gradient(145deg, #45a049, #4CAF50);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+}
+
+#jumpButton:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 10px rgba(76, 175, 80, 0.3);
+}
+
+/* Animations */
+@keyframes blink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0.3; }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    #gameContainer {
+        padding: 15px;
+        margin: 10px;
+    }
+    
+    #gameCanvas {
+        width: 100%;
+        max-width: 600px;
+        height: auto;
+    }
+    
+    #ui {
+        font-size: 16px;
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    #mobileControls {
+        display: block;
+    }
+    
+    #instructions {
+        font-size: 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    #gameContainer {
+        padding: 10px;
+        margin: 5px;
+    }
+    
+    #ui {
+        font-size: 14px;
+    }
+    
+    #gameOver {
+        padding: 20px;
+        margin: 10px;
+    }
+    
+    #gameOver h2 {
+        font-size: 24px;
+    }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+    #gameCanvas {
+        border-width: 3px;
+    }
+    
+    #score, #highScore {
+        border-width: 3px;
+    }
+    
+    #gameOver {
+        border-width: 4px;
+    }
+}
