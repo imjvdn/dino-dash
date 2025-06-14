@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Dino Dash - A Chrome Dinosaur Runner clone with enhanced graphics and animations">
+    <meta name="keywords" content="game, dinosaur, runner, chrome, dino, dash, javascript">
+    <meta name="author" content="Dino Dash Team">
+    
+    <title>Dino Dash - Chrome Dinosaur Runner Clone</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦕</text></svg>">
+    
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="../src/css/style.css">
+    
+    <!-- Preload critical resources -->
+    <link rel="preload" href="../src/js/script.js" as="script">
+</head>
+<body>
+    <!-- Game Container -->
+    <div id="gameContainer">
+        <!-- Game UI -->
+        <div id="ui">
+            <div>Score: <span id="score">0</span></div>
+            <div>High Score: <span id="highScore">0</span></div>
+            <div class="god-mode">God Mode: <span id="godModeStatus">OFF</span></div>
+        </div>
+        
+        <!-- Game Canvas -->
+        <canvas id="gameCanvas" width="800" height="200" aria-label="Dino Dash Game Canvas">
+            Your browser does not support the HTML5 canvas element. Please upgrade to a modern browser.
+        </canvas>
+        
+        <!-- Mobile Controls -->
+        <div id="mobileControls">
+            <button id="jumpButton" type="button" aria-label="Jump">JUMP</button>
+        </div>
+        
+        <!-- Game Instructions -->
+        <div id="instructions">
+            <p><strong>How to Play:</strong></p>
+            <p>🦕 Press <kbd>SPACEBAR</kbd> or <kbd>↑</kbd> to jump</p>
+            <p>🎯 Avoid the cacti to survive</p>
+            <p>⭐ Features: Double jump, Float control (hold jump while falling), Night mode at 700 points</p>
+            <p>📱 Mobile: Tap the screen or JUMP button</p>
+            <p>🎮 <kbd>G</kbd> to toggle God Mode (auto-play)</p>
+        </div>
+    </div>
+    
+    <!-- Game Over Screen -->
+    <div id="gameOver" style="display: none;" role="dialog" aria-labelledby="gameOverTitle" aria-describedby="gameOverText">
+        <h2 id="gameOverTitle">GAME OVER</h2>
+        <p id="gameOverText">Press <kbd>SPACEBAR</kbd>, <kbd>↑</kbd>, or <kbd>ENTER</kbd> to restart</p>
+        <p>Keep practicing to beat your high score!</p>
+    </div>
+    
+    <!-- JavaScript -->
+    <script src="../src/js/script.js"></script>
+    
+    <!-- Service Worker Registration (for PWA capabilities) -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('../src/sw.js')
+                    .then(registration => console.log('SW registered'))
+                    .catch(registrationError => console.log('SW registration failed'));
+            });
+        }
+    </script>
+</body>
+</html>
