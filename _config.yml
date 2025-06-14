@@ -1,8 +1,0 @@
-# GitHub Pages configuration
-# This file tells GitHub Pages to use the docs/ folder as the root
-# and disables Jekyll processing for all files
-
-theme: jekyll-theme-primer
-include: ["docs"]
-
-exclude: ["src", "assets", "node_modules", "archive"]

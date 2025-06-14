@@ -6,7 +6,7 @@
 const CACHE_NAME = 'dino-dash-v1.0.0';
 const urlsToCache = [
     './',
-    './index-new.html',
+    './index.html',
     './src/css/style.css',
     './src/js/script.js',
     './README.md'

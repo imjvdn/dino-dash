@@ -4,20 +4,12 @@
 [![JavaScript](https://img.shields.io/badge/JavaScript-ES6+-yellow.svg)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
 [![HTML5](https://img.shields.io/badge/HTML5-Canvas-orange.svg)](https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API)
 [![PWA Ready](https://img.shields.io/badge/PWA-Ready-blue.svg)](https://web.dev/progressive-web-apps/)
-[![Live Demo](https://img.shields.io/badge/Live-Demo-brightgreen)](https://imjvdn.github.io/dino-dash/)
 
 A professionally organized, feature-rich Chrome Dinosaur Runner clone built with vanilla JavaScript, HTML5 Canvas, and modern web technologies. This project showcases clean code architecture, enhanced graphics, and smooth animations.
 
 ## 🎮 Live Demo
 
-🎮 [Play Dino Dash Now](https://imjvdn.github.io/dino-dash/)
-
-Try to beat the high score! The game features:
-- 🦘 Double jump ability
-- 🪶 Float control (hold jump while falling)
-- 🌙 Night mode at 700 points
-- 📱 Mobile-friendly controls
-- 🏆 Persistent high scores
+[Play Dino Dash](https://your-username.github.io/dino-dash) *(Update with your actual deployment URL)*
 
 ## ✨ Features
 

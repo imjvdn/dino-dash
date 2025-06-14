@@ -51,45 +51,21 @@ body.night-mode {
     border-color: #666;
 }
 
-/* UI styles */
+/* UI Elements */
 #ui {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 10px;
+    align-items: center;
+    margin-bottom: 15px;
     color: #333;
     font-weight: bold;
-    font-size: 16px;
-    padding: 8px 15px;
-    background: rgba(255, 255, 255, 0.7);
-    border-radius: 20px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-}
-
-/* God Mode indicator */
-.god-mode {
-    color: #2ecc71;
-    font-weight: bold;
-    text-shadow: 0 0 5px rgba(46, 204, 113, 0.5);
-    transition: all 0.3s ease;
-}
-
-.god-mode .active {
-    color: #e74c3c;
-    text-shadow: 0 0 10px rgba(231, 76, 60, 0.7);
-    animation: pulse 1.5s infinite;
-}
-
-@keyframes pulse {
-    0% { opacity: 0.7; }
-    50% { opacity: 1; }
-    100% { opacity: 0.7; }
+    font-size: 18px;
 }
 
 .night-mode #ui {
     color: #f7f7f7;
 }
 
-/* UI Elements */
 #score, #highScore {
     background: rgba(255, 255, 255, 0.8);
     padding: 8px 15px;

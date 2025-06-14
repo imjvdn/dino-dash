@@ -5,15 +5,19 @@
 
 // ===== GAME CONFIGURATION =====
 const CONFIG = {
-    CANVAS_WIDTH: 800,
-    CANVAS_HEIGHT: 200,
-    GROUND_HEIGHT: 20,
-    GRAVITY: 0.6,
-    JUMP_STRENGTH: -12,
-    INITIAL_SPEED: 2,
-    SPEED_INCREMENT: 0.005,
-    OBSTACLE_SPAWN_RATE: 0.01,
-    NIGHT_MODE_THRESHOLD: 700
+    CANVAS_WIDTH: 1200,  // Increased from 800
+    CANVAS_HEIGHT: 300,  // Increased from 200
+    GROUND_HEIGHT: 30,   // Slightly increased for larger canvas
+    GRAVITY: 0.5,        // Reduced gravity for floatier feel
+    JUMP_STRENGTH: -14,  // Slightly stronger jump to compensate for larger canvas
+    INITIAL_SPEED: 1.5,  // Slower initial speed
+    SPEED_INCREMENT: 0.002, // Slower speed increase
+    MAX_SPEED: 8,        // Added max speed cap
+    OBSTACLE_SPAWN_RATE: 0.007, // Slightly lower spawn rate
+    OBSTACLE_MIN_GAP: 300, // Minimum gap between obstacles
+    NIGHT_MODE_THRESHOLD: 700,
+    ANIMATION_FRAME_RATE: 10, // Frames between animation updates
+    PARALLAX_SPEED_RATIO: 0.5 // Speed ratio for parallax background
 };
 
 // ===== GAME STATE MANAGEMENT =====
@@ -64,18 +68,33 @@ class GameState {
 // ===== PLAYER CLASS =====
 class Player {
     constructor(canvas) {
-        this.x = 50;
-        this.y = canvas.height - CONFIG.GROUND_HEIGHT - 40;
-        this.width = 40;
-        this.height = 40;
+        // Position and size (scaled for larger canvas)
+        this.width = 60;  // Increased from 40
+        this.height = 60; // Increased from 40
+        this.x = 100;     // Moved right for better visibility
+        this.y = canvas.height - CONFIG.GROUND_HEIGHT - this.height;
+        
+        // Physics
         this.velocityY = 0;
         this.isJumping = false;
-        this.groundY = canvas.height - CONFIG.GROUND_HEIGHT - 40;
+        this.groundY = canvas.height - CONFIG.GROUND_HEIGHT - this.height;
+        
+        // Jump mechanics
         this.jumpCount = 0;
         this.maxJumps = 2;
+        this.jumpHoldTime = 0;
+        this.maxJumpHoldTime = 15; // Frames to hold jump for maximum height
+        
+        // Animation
         this.animationFrame = 0;
-        this.animationSpeed = 8;
+        this.animationSpeed = 6; // Slower animation
         this.state = 'running';
+        this.lastFrameTime = 0;
+        
+        // Smoothing
+        this.smoothXVelocity = 0;
+        this.smoothYVelocity = 0;
+        this.smoothingFactor = 0.1; // Lower = smoother
     }
 
     jump() {
@@ -502,127 +521,71 @@ class ObstacleSystem {
     }
 }
 
-// ===== GOD MODE =====
-class GodMode {
-    constructor(player, obstacleSystem) {
-        this.player = player;
-        this.obstacleSystem = obstacleSystem;
-        this.isActive = false;
-        this.decisionInterval = 50; // Check for obstacles every X frames
-        this.frameCounter = 0;
-    }
-
-    toggle() {
-        this.isActive = !this.isActive;
-        return this.isActive;
-    }
-
-    update() {
-        if (!this.isActive) return;
-        
-        this.frameCounter++;
-        if (this.frameCounter >= this.decisionInterval) {
-            this.frameCounter = 0;
-            this.makeDecision();
-        }
-    }
-
-    makeDecision() {
-        // Find the nearest obstacle in front of the player
-        const nearestObstacle = this.obstacleSystem.obstacles
-            .filter(obs => obs.x + obs.width > this.player.x)
-            .sort((a, b) => (a.x - this.player.x) - (b.x - this.player.x))[0];
-
-        if (!nearestObstacle) return;
-
-        const distanceToObstacle = nearestObstacle.x - (this.player.x + this.player.width);
-        const isObstacleClose = distanceToObstacle < 150;
-        const shouldJump = isObstacleClose && !this.player.isJumping;
-        
-        // Jump if obstacle is close and player is on the ground
-        if (shouldJump) {
-            this.player.jump();
-        }
-    }
-}
-
 // ===== INPUT SYSTEM =====
 class InputSystem {
     constructor() {
         this.state = {
             spacePressed: false,
-            upPressed: false,
-            godMode: false
+            upPressed: false
         };
         this.setupEventListeners();
     }
 
     setupEventListeners() {
-        // Keyboard controls
+        // Keyboard events
         document.addEventListener('keydown', (e) => {
-            if (e.code === 'KeyG' || (e.ctrlKey && e.key === 'g')) {
-                // Toggle god mode with Ctrl+G or G
-                this.state.godMode = !this.state.godMode;
-                document.getElementById('godModeStatus').textContent = this.state.godMode ? 'ON' : 'OFF';
-                document.getElementById('godModeStatus').className = this.state.godMode ? 'active' : '';
+            if (e.code === 'Space' || e.code === 'ArrowUp') {
                 e.preventDefault();
-            } else if (e.code === 'Space' || e.key === ' ' || e.key === 'Spacebar' || e.keyCode === 32) {
-                this.state.spacePressed = true;
-                e.preventDefault();
-            } else if (e.key === 'ArrowUp' || e.keyCode === 38) {
-                this.state.upPressed = true;
-                e.preventDefault();
+                if (!this.state.spacePressed && !this.state.upPressed) {
+                    game.handleJump();
+                }
+                this.state.spacePressed = e.code === 'Space';
+                this.state.upPressed = e.code === 'ArrowUp';
             }
         });
 
         document.addEventListener('keyup', (e) => {
-            if (e.code === 'Space' || e.key === ' ' || e.key === 'Spacebar' || e.keyCode === 32) {
+            if (e.code === 'Space') {
                 this.state.spacePressed = false;
-            } else if (e.key === 'ArrowUp' || e.keyCode === 38) {
+            }
+            if (e.code === 'ArrowUp') {
                 this.state.upPressed = false;
             }
         });
 
-        // Touch controls
+        // Mobile touch events
         const jumpButton = document.getElementById('jumpButton');
         if (jumpButton) {
             jumpButton.addEventListener('touchstart', (e) => {
-                this.state.spacePressed = true;
                 e.preventDefault();
+                game.handleJump();
             });
 
-            jumpButton.addEventListener('touchend', (e) => {
-                this.state.spacePressed = false;
+            jumpButton.addEventListener('click', (e) => {
                 e.preventDefault();
+                game.handleJump();
             });
         }
-    }
 
-    // Canvas touch events
-    setupCanvasEvents() {
+        // Canvas touch events
         const canvas = document.getElementById('gameCanvas');
         if (canvas) {
             canvas.addEventListener('touchstart', (e) => {
                 e.preventDefault();
-                if (this.game && this.game.handleJump) {
-                    this.game.handleJump();
-                }
+                game.handleJump();
             });
 
             canvas.addEventListener('click', (e) => {
                 e.preventDefault();
-                if (this.game && this.game.handleJump) {
-                    this.game.handleJump();
-                }
+                game.handleJump();
             });
         }
 
         // Restart game events
         document.addEventListener('keydown', (e) => {
-            if (this.game && !this.game.gameState.isRunning && 
-                (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'Enter')) {
+            if (!game.gameState.isRunning && (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'Enter')) {
                 e.preventDefault();
-                this.game.restart();
+                game.restart();
             }
         });
     }
@@ -631,126 +594,240 @@ class InputSystem {
 // ===== MAIN GAME CLASS =====
 class Game {
     constructor() {
+        // Setup canvas and context
         this.canvas = document.getElementById('gameCanvas');
-        this.ctx = this.canvas.getContext('2d');
+        this.ctx = this.canvas.getContext('2d', { alpha: false }); // Disable alpha for better performance
         
-        // Set canvas size
+        // Set canvas size from config
         this.canvas.width = CONFIG.CANVAS_WIDTH;
         this.canvas.height = CONFIG.CANVAS_HEIGHT;
         
-        // Initialize game systems
+        // Performance optimization
+        this.ctx.imageSmoothingEnabled = false; // For pixel art
+        this.ctx.webkitImageSmoothingEnabled = false;
+        this.ctx.mozImageSmoothingEnabled = false;
+        
+        // Game timing
+        this.lastTime = 0;
+        this.accumulator = 0;
+        this.timestep = 1000/60; // 60 FPS target
+        this.lastFrameTime = performance.now();
+        this.fps = 0;
+        this.frameCount = 0;
+        this.lastFpsUpdate = 0;
+        this.frameTime = 0;
+        
+        // Game state
         this.gameState = new GameState();
+        this.gameSpeed = CONFIG.INITIAL_SPEED;
+        this.isGameOver = false;
+        this.animationFrameId = null;
+        
+        // Initialize game objects
         this.player = new Player(this.canvas);
+        this.obstacles = [];
+        this.lastObstacleTime = 0;
+        
+        // Initialize systems with optimized settings
         this.particleSystem = new ParticleSystem();
         this.backgroundSystem = new BackgroundSystem(this.canvas);
         this.obstacleSystem = new ObstacleSystem(this.canvas);
         this.inputSystem = new InputSystem();
         
-        // Initialize God Mode
-        this.godMode = new GodMode(this.player, this.obstacleSystem);
+        // Performance monitoring
+        this.fpsElement = document.createElement('div');
+        this.fpsElement.style.position = 'absolute';
+        this.fpsElement.style.top = '10px';
+        this.fpsElement.style.right = '10px';
+        this.fpsElement.style.color = 'white';
+        this.fpsElement.style.fontFamily = 'monospace';
+        this.fpsElement.style.backgroundColor = 'rgba(0,0,0,0.5)';
+        this.fpsElement.style.padding = '5px 10px';
+        this.fpsElement.style.borderRadius = '5px';
+        document.body.appendChild(this.fpsElement);
         
-        // Set up canvas events
-        this.inputSystem.setupCanvasEvents();
-        
-        // Start game loop
-        this.gameLoop();
+        // Start the game loop
+        this.start();
     }
-    
+
     handleJump() {
         if (this.gameState.isRunning) {
             this.player.jump();
         }
     }
-    
-    restart() {
-        this.gameState.reset();
-        this.player = new Player(this.canvas);
-        this.particleSystem.reset();
-        this.backgroundSystem.reset();
-        this.obstacleSystem.reset();
-        
-        // Reset God Mode
-        this.godMode = new GodMode(this.player, this.obstacleSystem);
-        
-        document.getElementById('gameOver').style.display = 'none';
-        document.body.classList.remove('night-mode');
-    }
 
-    update() {
-        if (!this.gameState.isRunning) return;
+    restart() {
+        this.gameState = new GameState();
+        this.player = new Player(this.canvas);
+        this.particleSystem = new ParticleSystem();
+        this.backgroundSystem = new BackgroundSystem(this.canvas);
+        this.obstacleSystem = new ObstacleSystem(this.canvas);
+        this.gameSpeed = CONFIG.INITIAL_SPEED;
+        this.isGameOver = false;
+        this.lastTime = performance.now();
+        this.accumulator = 0;
+        this.frameCount = 0;
+        this.lastFpsUpdate = 0;
         
-        // Update game state
-        this.gameState.update();
-        
-        // Update God Mode if active
-        if (this.inputSystem.state.godMode) {
-            this.godMode.update();
+        // Hide game over screen if visible
+        const gameOverElement = document.getElementById('gameOver');
+        if (gameOverElement) {
+            gameOverElement.style.display = 'none';
         }
         
-        // Update game objects
-        this.player.update(this.inputSystem.state, this.particleSystem);
-        this.obstacleSystem.update(this.gameState);
-        this.particleSystem.update();
-        this.backgroundSystem.update(this.gameState);
+        // Reset night mode
+        document.body.classList.remove('night-mode');
         
-        // Check for collisions
+        // Start the game loop again
+        this.start();
+    }
+    
+    checkCollisions() {
         if (this.obstacleSystem.checkCollision(this.player)) {
             this.gameState.gameOver();
         }
     }
     
-    // Update UI
-    updateUI() {
-        document.getElementById('score').textContent = Math.floor(this.gameState.score);
-        document.getElementById('highScore').textContent = this.gameState.highScore;
-        
-        // Update game over screen
-        const gameOverElement = document.getElementById('gameOver');
-        if (this.gameState.isRunning) {
-            gameOverElement.style.display = 'none';
-        } else if (this.gameState.score > 0) {
-            gameOverElement.style.display = 'block';
-        }
-    }
-
-    draw() {
-        // Clear canvas
+    render() {
+        // Clear the canvas
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         
-        // Draw all game elements in order
+        // Draw background first
         this.backgroundSystem.draw(this.ctx, this.gameState);
-        this.player.draw(this.ctx, this.gameState, this.inputSystem.state);
+        
+        // Draw obstacles
         this.obstacleSystem.draw(this.ctx, this.gameState);
+        
+        // Draw player
+        this.player.draw(this.ctx, this.gameState, this.inputSystem.state);
+        
+        // Draw particles
         this.particleSystem.draw(this.ctx, this.gameState);
         
-        // Draw God Mode indicator
-        if (this.inputSystem.state.godMode) {
-            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-            this.ctx.fillRect(10, 10, 120, 30);
-            this.ctx.font = '16px Arial';
-            this.ctx.fillStyle = '#0f0';
-            this.ctx.textAlign = 'left';
-            this.ctx.fillText('GOD MODE: ON', 20, 30);
-        }
+        // Draw UI
+        this.drawUI();
     }
-
-    updateUI() {
+    
+    drawUI() {
         document.getElementById('score').textContent = Math.floor(this.gameState.score);
         document.getElementById('highScore').textContent = this.gameState.highScore;
     }
+    
+    // Start the game loop
+    start() {
+        this.lastTime = performance.now();
+        this.animationFrameId = requestAnimationFrame((timestamp) => this.gameLoop(timestamp));
+    }
+    
+    // Main game loop with fixed timestep
+    gameLoop(timestamp) {
+        // Calculate frame timing
+        const currentTime = timestamp || performance.now();
+        const deltaTime = currentTime - this.lastTime;
+        this.lastTime = currentTime;
+        
+        // Update FPS counter every second
+        this.frameCount++;
+        if (currentTime - this.lastFpsUpdate > 1000) {
+            this.fps = Math.round((this.frameCount * 1000) / (currentTime - this.lastFpsUpdate));
+            if (this.fpsElement) {
+                this.fpsElement.textContent = `${this.fps} FPS`;
+            }
+            this.frameCount = 0;
+            this.lastFpsUpdate = currentTime;
+        }
+        
+        // Fixed timestep for consistent game speed
+        this.accumulator += Math.min(deltaTime, 250); // Cap delta time to avoid spiral of death
+        
+        // Process a fixed timestep worth of updates
+        const timestep = 1000 / 60; // 60 updates per second
+        while (this.accumulator >= timestep) {
+            this.update(timestep);
+            this.accumulator -= timestep;
+        }
+        
+        // Render the current state
+        this.render();
+        
+        // Continue the game loop
+        if (!this.isGameOver) {
+            this.animationFrameId = requestAnimationFrame(ts => this.gameLoop(ts));
+        }
+    }
+    
+    // Update game state
+    update(deltaTime) {
+        if (this.isGameOver) return;
+        
+        // Update game state
+        this.gameState.update();
+        
+        // Update player
+        this.player.update(deltaTime, this.inputSystem.state, this.particleSystem);
+        
+        // Update systems
+        this.particleSystem.update(deltaTime);
+        this.backgroundSystem.update(deltaTime, this.gameSpeed);
+        this.obstacleSystem.update(deltaTime, this.gameSpeed);
+        
+        // Check for collisions
+        this.checkCollisions();
+        
+        // Gradually increase game speed
+        if (!this.isGameOver) {
+            this.gameSpeed = Math.min(
+                CONFIG.INITIAL_SPEED * 5, // Maximum speed cap
+                this.gameSpeed + (CONFIG.SPEED_INCREMENT * deltaTime / 16.67) // Normalized to 60fps
+            );
+        }
+    }
 
-    gameLoop() {
-        this.update();
-        this.draw();
-        this.updateUI();
-        requestAnimationFrame(() => this.gameLoop());
+} // End of Game class
+
+// ===== GAME INITIALIZATION =====
+console.log('Script loaded successfully!');
+let game;
+
+// Function to initialize the game
+function initGame() {
+    console.log('DOM fully loaded, initializing game...');
+    try {
+        game = new Game();
+        console.log('Game initialized successfully!');
+        
+        // Hide loading screen once game is initialized
+        if (window.hideLoadingScreen) {
+            window.hideLoadingScreen();
+        } else {
+            console.warn('hideLoadingScreen function not found on window');
+            // Fallback: hide loading screen directly
+            const loadingElement = document.getElementById('loading');
+            if (loadingElement) loadingElement.style.display = 'none';
+        }
+        
+        return true;
+    } catch (error) {
+        const errorMsg = `Error initializing game: ${error.message}`;
+        console.error(errorMsg, error);
+        
+        // Show error in the UI if possible
+        if (window.showError) {
+            window.showError(errorMsg);
+        }
+        
+        // Still hide loading screen to show the error
+        const loadingElement = document.getElementById('loading');
+        if (loadingElement) loadingElement.style.display = 'none';
+        
+        return false;
     }
 }
 
-// ===== GAME INITIALIZATION =====
-let game;
-
 // Initialize game when DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-    game = new Game();
-});
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initGame);
+} else {
+    // DOMContentLoaded has already fired, initialize immediately
+    setTimeout(initGame, 0);
+}

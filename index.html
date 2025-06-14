@@ -13,10 +13,10 @@
     <link rel="icon" type="image/x-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦕</text></svg>">
     
     <!-- Stylesheets -->
-    <link rel="stylesheet" href="src/css/style.css">
+    <link rel="stylesheet" href="./src/css/style.css">
     
     <!-- Preload critical resources -->
-    <link rel="preload" href="src/js/script.js" as="script">
+    <link rel="preload" href="./src/js/script.js" as="script">
 </head>
 <body>
     <!-- Game Container -->
@@ -25,11 +25,11 @@
         <div id="ui">
             <div>Score: <span id="score">0</span></div>
             <div>High Score: <span id="highScore">0</span></div>
-            <div class="god-mode">God Mode: <span id="godModeStatus">OFF</span></div>
         </div>
         
         <!-- Game Canvas -->
-        <canvas id="gameCanvas" width="800" height="200" aria-label="Dino Dash Game Canvas">
+        <canvas id="gameCanvas" width="1200" height="300" aria-label="Dino Dash Game Canvas" 
+            style="border: 2px solid red; background-color: rgba(255,0,0,0.1); max-width: 100%; height: auto;">
             Your browser does not support the HTML5 canvas element. Please upgrade to a modern browser.
         </canvas>
         
@@ -45,7 +45,6 @@
             <p>🎯 Avoid the cacti to survive</p>
             <p>⭐ Features: Double jump, Float control (hold jump while falling), Night mode at 700 points</p>
             <p>📱 Mobile: Tap the screen or JUMP button</p>
-            <p>🎮 <kbd>G</kbd> to toggle God Mode (auto-play)</p>
         </div>
     </div>
     
@@ -56,16 +55,113 @@
         <p>Keep practicing to beat your high score!</p>
     </div>
     
+    <!-- Loading Indicator -->
+    <div id="loading" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); color: white; display: flex; justify-content: center; align-items: center; flex-direction: column; z-index: 1000;">
+        <h2>Loading Dino Dash...</h2>
+        <p id="loadingStatus">Initializing game...</p>
+    </div>
+
     <!-- JavaScript -->
-    <script src="src/js/script.js"></script>
+    <script>
+        function hideLoadingScreen() {
+            const loadingElement = document.getElementById('loading');
+            if (loadingElement) {
+                loadingElement.style.display = 'none';
+            }
+        }
+
+        function showError(message) {
+            const loadingElement = document.getElementById('loading');
+            if (loadingElement) {
+                loadingElement.innerHTML = `
+                    <div style="color: #ff6b6b; text-align: center; padding: 20px;">
+                        <h2>Error Loading Game</h2>
+                        <p>${message}</p>
+                        <p>Please check the console for more details.</p>
+                    </div>
+                `;
+            }
+            console.error('Game Error:', message);
+        }
+
+        function updateStatus(message) {
+            const statusElement = document.getElementById('loadingStatus');
+            if (statusElement) {
+                statusElement.textContent = message;
+            }
+            console.log('Status:', message);
+        }
+
+        // Test function to verify JavaScript is running
+        function testJavaScript() {
+            console.log('JavaScript is running!');
+            updateStatus('JavaScript is running...');
+            return true;
+        }
+
+        // Run the test
+        testJavaScript();
+
+        // Global error handler
+        window.addEventListener('error', function(event) {
+            const errorMessage = event.message || 'Unknown error occurred';
+            showError(`Game Error: ${errorMessage}`);
+            console.error('Global error:', event.error || event);
+            return false;
+        });
+
+        // Handle unhandled promise rejections
+        window.addEventListener('unhandledrejection', function(event) {
+            const reason = event.reason || 'Unknown promise rejection';
+            showError(`Unhandled Promise Rejection: ${reason}`);
+            console.error('Unhandled Promise Rejection:', event.reason);
+            event.preventDefault();
+        });
+
+        // Make hideLoadingScreen available globally so the game can call it when ready
+        window.hideLoadingScreen = hideLoadingScreen;
+        window.showError = showError;
+
+        // Load script with error handling
+        updateStatus('Loading game script...');
+        const script = document.createElement('script');
+        script.src = './src/js/script.js';
+        script.onload = function() {
+            console.log('Game script loaded successfully');
+            updateStatus('Game script loaded, initializing...');
+            // The game should call hideLoadingScreen() when it's fully initialized
+        };
+        script.onerror = function() {
+            const errorMsg = 'Failed to load game script. Please check the console for errors.';
+            showError(errorMsg);
+            console.error(errorMsg);
+            console.error('Script loading error details:', script.src, 'failed to load');
+        };
+        document.head.appendChild(script);
+
+        // Safety net: hide loading screen after 5 seconds no matter what
+        setTimeout(() => {
+            if (document.getElementById('loading')?.style.display !== 'none') {
+                console.warn('Loading screen timeout - forcing hide');
+                hideLoadingScreen();
+            }
+        }, 5000);
+    </script>
     
     <!-- Service Worker Registration (for PWA capabilities) -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('src/sw.js')
-                    .then(registration => console.log('SW registered'))
-                    .catch(registrationError => console.log('SW registration failed'));
+                updateStatus('Registering service worker...');
+                navigator.serviceWorker.register('./sw.js')
+                    .then(registration => {
+                        console.log('SW registered');
+                        updateStatus('Service worker registered successfully');
+                    })
+                    .catch(registrationError => {
+                        console.error('SW registration failed: ', registrationError);
+                        updateStatus('Service worker registration failed: ' + registrationError.message);
+                    });
             });
         }
     </script>

@@ -13,10 +13,10 @@
     <link rel="icon" type="image/x-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦕</text></svg>">
     
     <!-- Stylesheets -->
-    <link rel="stylesheet" href="/dino-dash/src/css/style.css">
+    <link rel="stylesheet" href="src/css/style.css">
     
     <!-- Preload critical resources -->
-    <link rel="preload" href="/dino-dash/src/js/script.js" as="script">
+    <link rel="preload" href="src/js/script.js" as="script">
 </head>
 <body>
     <!-- Game Container -->
@@ -57,13 +57,13 @@
     </div>
     
     <!-- JavaScript -->
-    <script src="/dino-dash/src/js/script.js"></script>
+    <script src="src/js/script.js"></script>
     
     <!-- Service Worker Registration (for PWA capabilities) -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/dino-dash/src/sw.js')
+                navigator.serviceWorker.register('./src/sw.js')
                     .then(registration => console.log('SW registered'))
                     .catch(registrationError => console.log('SW registration failed'));
             });
