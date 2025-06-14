@@ -5,19 +5,15 @@
 
 // ===== GAME CONFIGURATION =====
 const CONFIG = {
-    CANVAS_WIDTH: 1200,  // Increased from 800
-    CANVAS_HEIGHT: 300,  // Increased from 200
-    GROUND_HEIGHT: 30,   // Slightly increased for larger canvas
-    GRAVITY: 0.5,        // Reduced gravity for floatier feel
-    JUMP_STRENGTH: -14,  // Slightly stronger jump to compensate for larger canvas
-    INITIAL_SPEED: 1.5,  // Slower initial speed
-    SPEED_INCREMENT: 0.002, // Slower speed increase
-    MAX_SPEED: 8,        // Added max speed cap
-    OBSTACLE_SPAWN_RATE: 0.007, // Slightly lower spawn rate
-    OBSTACLE_MIN_GAP: 300, // Minimum gap between obstacles
-    NIGHT_MODE_THRESHOLD: 700,
-    ANIMATION_FRAME_RATE: 10, // Frames between animation updates
-    PARALLAX_SPEED_RATIO: 0.5 // Speed ratio for parallax background
+    CANVAS_WIDTH: 800,
+    CANVAS_HEIGHT: 200,
+    GROUND_HEIGHT: 20,
+    GRAVITY: 0.6,
+    JUMP_STRENGTH: -12,
+    INITIAL_SPEED: 2,
+    SPEED_INCREMENT: 0.005,
+    OBSTACLE_SPAWN_RATE: 0.01,
+    NIGHT_MODE_THRESHOLD: 700
 };
 
 // ===== GAME STATE MANAGEMENT =====
@@ -68,33 +64,18 @@ class GameState {
 // ===== PLAYER CLASS =====
 class Player {
     constructor(canvas) {
-        // Position and size (scaled for larger canvas)
-        this.width = 60;  // Increased from 40
-        this.height = 60; // Increased from 40
-        this.x = 100;     // Moved right for better visibility
-        this.y = canvas.height - CONFIG.GROUND_HEIGHT - this.height;
-        
-        // Physics
+        this.x = 50;
+        this.y = canvas.height - CONFIG.GROUND_HEIGHT - 40;
+        this.width = 40;
+        this.height = 40;
         this.velocityY = 0;
         this.isJumping = false;
-        this.groundY = canvas.height - CONFIG.GROUND_HEIGHT - this.height;
-        
-        // Jump mechanics
+        this.groundY = canvas.height - CONFIG.GROUND_HEIGHT - 40;
         this.jumpCount = 0;
         this.maxJumps = 2;
-        this.jumpHoldTime = 0;
-        this.maxJumpHoldTime = 15; // Frames to hold jump for maximum height
-        
-        // Animation
         this.animationFrame = 0;
-        this.animationSpeed = 6; // Slower animation
+        this.animationSpeed = 8;
         this.state = 'running';
-        this.lastFrameTime = 0;
-        
-        // Smoothing
-        this.smoothXVelocity = 0;
-        this.smoothYVelocity = 0;
-        this.smoothingFactor = 0.1; // Lower = smoother
     }
 
     jump() {
@@ -594,60 +575,23 @@ class InputSystem {
 // ===== MAIN GAME CLASS =====
 class Game {
     constructor() {
-        // Setup canvas and context
         this.canvas = document.getElementById('gameCanvas');
-        this.ctx = this.canvas.getContext('2d', { alpha: false }); // Disable alpha for better performance
+        this.ctx = this.canvas.getContext('2d');
         
-        // Set canvas size from config
+        // Set canvas size
         this.canvas.width = CONFIG.CANVAS_WIDTH;
         this.canvas.height = CONFIG.CANVAS_HEIGHT;
         
-        // Performance optimization
-        this.ctx.imageSmoothingEnabled = false; // For pixel art
-        this.ctx.webkitImageSmoothingEnabled = false;
-        this.ctx.mozImageSmoothingEnabled = false;
-        
-        // Game timing
-        this.lastTime = 0;
-        this.accumulator = 0;
-        this.timestep = 1000/60; // 60 FPS target
-        this.lastFrameTime = performance.now();
-        this.fps = 0;
-        this.frameCount = 0;
-        this.lastFpsUpdate = 0;
-        this.frameTime = 0;
-        
-        // Game state
+        // Initialize game systems
         this.gameState = new GameState();
-        this.gameSpeed = CONFIG.INITIAL_SPEED;
-        this.isGameOver = false;
-        this.animationFrameId = null;
-        
-        // Initialize game objects
         this.player = new Player(this.canvas);
-        this.obstacles = [];
-        this.lastObstacleTime = 0;
-        
-        // Initialize systems with optimized settings
         this.particleSystem = new ParticleSystem();
         this.backgroundSystem = new BackgroundSystem(this.canvas);
         this.obstacleSystem = new ObstacleSystem(this.canvas);
         this.inputSystem = new InputSystem();
         
-        // Performance monitoring
-        this.fpsElement = document.createElement('div');
-        this.fpsElement.style.position = 'absolute';
-        this.fpsElement.style.top = '10px';
-        this.fpsElement.style.right = '10px';
-        this.fpsElement.style.color = 'white';
-        this.fpsElement.style.fontFamily = 'monospace';
-        this.fpsElement.style.backgroundColor = 'rgba(0,0,0,0.5)';
-        this.fpsElement.style.padding = '5px 10px';
-        this.fpsElement.style.borderRadius = '5px';
-        document.body.appendChild(this.fpsElement);
-        
-        // Start the game loop
-        this.start();
+        // Start game loop
+        this.gameLoop();
     }
 
     handleJump() {
@@ -657,133 +601,56 @@ class Game {
     }
 
     restart() {
-        this.gameState = new GameState();
+        this.gameState.reset();
         this.player = new Player(this.canvas);
-        this.particleSystem = new ParticleSystem();
-        this.backgroundSystem = new BackgroundSystem(this.canvas);
-        this.obstacleSystem = new ObstacleSystem(this.canvas);
-        this.gameSpeed = CONFIG.INITIAL_SPEED;
-        this.isGameOver = false;
-        this.lastTime = performance.now();
-        this.accumulator = 0;
-        this.frameCount = 0;
-        this.lastFpsUpdate = 0;
+        this.particleSystem.reset();
+        this.backgroundSystem.reset();
+        this.obstacleSystem.reset();
         
-        // Hide game over screen if visible
-        const gameOverElement = document.getElementById('gameOver');
-        if (gameOverElement) {
-            gameOverElement.style.display = 'none';
-        }
-        
-        // Reset night mode
+        document.getElementById('gameOver').style.display = 'none';
         document.body.classList.remove('night-mode');
-        
-        // Start the game loop again
-        this.start();
     }
-    
-    checkCollisions() {
+
+    update() {
+        if (!this.gameState.isRunning) return;
+
+        this.gameState.update();
+        this.player.update(this.inputSystem.state, this.particleSystem);
+        this.particleSystem.update();
+        this.backgroundSystem.update(this.gameState);
+        this.obstacleSystem.update(this.gameState);
+
+        // Check collisions
         if (this.obstacleSystem.checkCollision(this.player)) {
             this.gameState.gameOver();
         }
+
+        // Update UI
+        this.updateUI();
     }
-    
-    render() {
-        // Clear the canvas
+
+    draw() {
+        // Clear canvas
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         
-        // Draw background first
+        // Draw all game elements in order
         this.backgroundSystem.draw(this.ctx, this.gameState);
-        
-        // Draw obstacles
-        this.obstacleSystem.draw(this.ctx, this.gameState);
-        
-        // Draw player
         this.player.draw(this.ctx, this.gameState, this.inputSystem.state);
-        
-        // Draw particles
+        this.obstacleSystem.draw(this.ctx, this.gameState);
         this.particleSystem.draw(this.ctx, this.gameState);
-        
-        // Draw UI
-        this.drawUI();
     }
-    
-    drawUI() {
+
+    updateUI() {
         document.getElementById('score').textContent = Math.floor(this.gameState.score);
         document.getElementById('highScore').textContent = this.gameState.highScore;
     }
-    
-    // Start the game loop
-    start() {
-        this.lastTime = performance.now();
-        this.animationFrameId = requestAnimationFrame((timestamp) => this.gameLoop(timestamp));
-    }
-    
-    // Main game loop with fixed timestep
-    gameLoop(timestamp) {
-        // Calculate frame timing
-        const currentTime = timestamp || performance.now();
-        const deltaTime = currentTime - this.lastTime;
-        this.lastTime = currentTime;
-        
-        // Update FPS counter every second
-        this.frameCount++;
-        if (currentTime - this.lastFpsUpdate > 1000) {
-            this.fps = Math.round((this.frameCount * 1000) / (currentTime - this.lastFpsUpdate));
-            if (this.fpsElement) {
-                this.fpsElement.textContent = `${this.fps} FPS`;
-            }
-            this.frameCount = 0;
-            this.lastFpsUpdate = currentTime;
-        }
-        
-        // Fixed timestep for consistent game speed
-        this.accumulator += Math.min(deltaTime, 250); // Cap delta time to avoid spiral of death
-        
-        // Process a fixed timestep worth of updates
-        const timestep = 1000 / 60; // 60 updates per second
-        while (this.accumulator >= timestep) {
-            this.update(timestep);
-            this.accumulator -= timestep;
-        }
-        
-        // Render the current state
-        this.render();
-        
-        // Continue the game loop
-        if (!this.isGameOver) {
-            this.animationFrameId = requestAnimationFrame(ts => this.gameLoop(ts));
-        }
-    }
-    
-    // Update game state
-    update(deltaTime) {
-        if (this.isGameOver) return;
-        
-        // Update game state
-        this.gameState.update();
-        
-        // Update player
-        this.player.update(deltaTime, this.inputSystem.state, this.particleSystem);
-        
-        // Update systems
-        this.particleSystem.update(deltaTime);
-        this.backgroundSystem.update(deltaTime, this.gameSpeed);
-        this.obstacleSystem.update(deltaTime, this.gameSpeed);
-        
-        // Check for collisions
-        this.checkCollisions();
-        
-        // Gradually increase game speed
-        if (!this.isGameOver) {
-            this.gameSpeed = Math.min(
-                CONFIG.INITIAL_SPEED * 5, // Maximum speed cap
-                this.gameSpeed + (CONFIG.SPEED_INCREMENT * deltaTime / 16.67) // Normalized to 60fps
-            );
-        }
-    }
 
-} // End of Game class
+    gameLoop() {
+        this.update();
+        this.draw();
+        requestAnimationFrame(() => this.gameLoop());
+    }
+}
 
 // ===== GAME INITIALIZATION =====
 console.log('Script loaded successfully!');
