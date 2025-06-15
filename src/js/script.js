@@ -79,10 +79,14 @@ class Player {
     }
 
     jump() {
+        console.log('Player.jump called, jumpCount:', this.jumpCount, 'maxJumps:', this.maxJumps);
         if (this.jumpCount < this.maxJumps) {
             this.velocityY = CONFIG.JUMP_STRENGTH;
             this.isJumping = true;
             this.jumpCount++;
+            console.log('Jump initiated, new velocityY:', this.velocityY, 'jumpCount:', this.jumpCount);
+        } else {
+            console.log('Max jumps reached, cannot jump');
         }
     }
 
@@ -595,8 +599,12 @@ class Game {
     }
 
     handleJump() {
+        console.log('handleJump called, gameState.isRunning:', this.gameState.isRunning);
         if (this.gameState.isRunning) {
+            console.log('Calling player.jump()');
             this.player.jump();
+        } else {
+            console.log('Game not running, jump ignored');
         }
     }
 
@@ -612,7 +620,10 @@ class Game {
     }
 
     update() {
-        if (!this.gameState.isRunning) return;
+        if (!this.gameState.isRunning) {
+            console.log('Game not running, skipping update');
+            return;
+        }
 
         this.gameState.update();
         this.player.update(this.inputSystem.state, this.particleSystem);
@@ -622,6 +633,7 @@ class Game {
 
         // Check collisions
         if (this.obstacleSystem.checkCollision(this.player)) {
+            console.log('Collision detected, game over');
             this.gameState.gameOver();
         }
 
@@ -630,14 +642,25 @@ class Game {
     }
 
     draw() {
-        // Clear canvas
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        // Clear canvas with debug color to verify clearing
+        this.ctx.fillStyle = '#f0f0f0';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         
         // Draw all game elements in order
-        this.backgroundSystem.draw(this.ctx, this.gameState);
-        this.player.draw(this.ctx, this.gameState, this.inputSystem.state);
-        this.obstacleSystem.draw(this.ctx, this.gameState);
-        this.particleSystem.draw(this.ctx, this.gameState);
+        try {
+            this.backgroundSystem.draw(this.ctx, this.gameState);
+            this.player.draw(this.ctx, this.gameState, this.inputSystem.state);
+            this.obstacleSystem.draw(this.ctx, this.gameState);
+            this.particleSystem.draw(this.ctx, this.gameState);
+            
+            // Draw debug info
+            this.ctx.fillStyle = 'red';
+            this.ctx.font = '12px Arial';
+            this.ctx.fillText(`Game Running: ${this.gameState.isRunning}`, 10, 20);
+            this.ctx.fillText(`Player Y: ${Math.round(this.player.y)}`, 10, 35);
+        } catch (error) {
+            console.error('Error in draw loop:', error);
+        }
     }
 
     updateUI() {
